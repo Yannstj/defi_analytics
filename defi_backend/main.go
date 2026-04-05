@@ -2,68 +2,60 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type HealthResponse struct {
-	Status   string `json:"status"`
-	Database string `json:"database"`
-}
-
-// On définit un handler qui capture le pool de connexions
-func healthHandler(db *pgxpool.Pool) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+func healthHandler(db *pgxpool.Pool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Création d'un contexte avec timeout pour le ping
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 		defer cancel()
 
-		// Vérification réelle avec Ping
+		// Test de la connexion
 		err := db.Ping(ctx)
-		
-		status := "OK"
-		dbStatus := "connected"
-		code := http.StatusOK
 
 		if err != nil {
-			status = "error"
-			dbStatus = "disconnected"
-			code = http.StatusServiceUnavailable
+			// Si erreur, on renvoie 503 Service Unavailable
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":   "error",
+				"database": "disconnected",
+			})
+			return
 		}
 
-		response := HealthResponse{
-			Status:   status,
-			Database: dbStatus,
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(response)
+		// Si tout est OK, on renvoie 200 OK
+		c.JSON(http.StatusOK, gin.H{
+			"status":   "OK",
+			"database": "connected",
+		})
 	}
 }
 
 func main() {
-	// 1. Initialisation du pool de connexions
+	router := gin.Default()
+	
 	dbURL := os.Getenv("DATABASE_URL")
 	db, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Impossible de créer le pool de connexion: %v\n", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	// 2. Routage
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Hello defi")
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Hello World :)",
+		})
 	})
-	
-	// Injection du pool dans le handler
-	http.HandleFunc("/health", healthHandler(db))
+
+	router.GET("/health", healthHandler(db))
 
 	fmt.Println("Serveur démarré sur :8080")
-	http.ListenAndServe(":8080", nil)
+	router.Run(":8080")
 }
