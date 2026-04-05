@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -100,6 +101,10 @@ func TokenHandler(db *pgxpool.Pool) gin.HandlerFunc {
 
 func main() {
 	router := gin.Default()
+	  router.Use(cors.New(cors.Config{
+      AllowOrigins: []string{"http://localhost:5173"},
+      AllowMethods: []string{"GET", "POST"},
+  }))
 
 	dbURL := os.Getenv("DATABASE_URL")
 	db, err := pgxpool.New(context.Background(), dbURL)
