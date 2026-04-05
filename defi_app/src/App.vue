@@ -1,29 +1,38 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+// On importe les sous-composants de la table Shadcn
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
-// On crée une variable réactive pour stocker nos tokens
-const tokens = ref([])
+// Type simple pour tes tokens (TypeScript)
+interface Token {
+  id: string
+  name: string
+  symbol: string
+}
+
+const tokens = ref<Token[]>([])
 const error = ref<string | null>(null)
 
-// La fonction qui va interroger ton backend Go
 const fetchTokens = async () => {
   try {
     const response = await fetch('http://localhost:8080/tokens')
-
-    if (!response.ok) {
-      throw new Error(`Erreur HTTP : ${response.status}`)
-    }
-
+    if (!response.ok) throw new Error(`Erreur HTTP : ${response.status}`)
     const data = await response.json()
-    tokens.value = data
-    console.log('Données reçues du backend :', data)
+    // Si ton API renvoie un objet direct, assure-toi que c'est bien un tableau
+    tokens.value = Array.isArray(data) ? data : [data]
   } catch (err) {
     error.value = 'Impossible de joindre le backend.'
-    console.error('Erreur lors du fetch :', err)
   }
 }
 
-// Appelé automatiquement quand le composant est affiché
 onMounted(() => {
   fetchTokens()
 })
@@ -31,16 +40,36 @@ onMounted(() => {
 
 <template>
   <main class="p-8">
-    <h1 class="text-2xl font-bold mb-4">Dashboard DeFi</h1>
+    <h1 class="text-3xl font-bold mb-6 tracking-tight">DeFi Dashboard</h1>
 
-    <div v-if="error" class="text-red-500 bg-red-100 p-4 rounded">
+    <div v-if="error" class="p-4 mb-4 text-red-700 bg-red-50 rounded-lg border border-red-200">
       {{ error }}
     </div>
 
-    <div v-else class="bg-gray-100 p-4 rounded shadow-inner">
-      <h2 class="font-semibold mb-2">Tokens (API Go) :</h2>
-      <pre v-if="tokens.length">{{ tokens }}</pre>
-      <p v-else>Chargement des données...</p>
+    <div v-else class="rounded-md border">
+      <Table>
+        <TableCaption>Liste des tokens récupérés depuis l'API Go.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead class="w-[100px]">Symbole</TableHead>
+            <TableHead>Nom du Token</TableHead>
+            <TableHead class="text-right">ID</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="token in tokens" :key="token.id">
+            <TableCell class="font-bold text-blue-600">{{ token.symbol }}</TableCell>
+            <TableCell>{{ token.name }}</TableCell>
+            <TableCell class="text-right font-mono text-xs text-gray-500 italic">
+              {{ token.id }}
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+
+      <div v-if="tokens.length === 0" class="p-8 text-center text-gray-500">
+        Aucun token trouvé...
+      </div>
     </div>
   </main>
 </template>
