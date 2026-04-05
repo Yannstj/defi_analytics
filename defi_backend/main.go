@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -47,6 +51,15 @@ func main() {
 		os.Exit(1)
 	}
 	defer db.Close()
+	m, err := migrate.New(
+		"file://migrations",
+		dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+  if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+      log.Fatal(err)
+  }
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
