@@ -1,9 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import YieldsPage from '../pages/YieldsPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [{ path: '/', component: YieldsPage }],
+  routes: [
+    {
+      path: '/',
+      component: () => import('../layouts/MainLayout.vue'),
+      children: [
+        {
+          path: '', // correspond à http://localhost:5173/
+          component: () => import('../pages/YieldsPage.vue'),
+        },
+      ],
+    },
+  ],
 })
 
 export default router
